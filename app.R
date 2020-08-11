@@ -14,11 +14,11 @@ library(DT)
 library(tidyverse)
 #library(tidytuesdayR)
 
-coaster <- readr::read_csv('https://raw.githubusercontent.com/maryryan/stats7-SS2-2020/master/stats7-SS2-2020-labs/lab-regression/datasets_1307_3124_rollercoasters.csv?token=ADKNEZWF2DNWDKUF7WOBQUK7GRYCU')
+coaster <- read_csv("./rollercoaster_edited.csv")#readr::read_csv('https://raw.githubusercontent.com/maryryan/stats7-SS2-2020-lab-regression/master/datasets_1307_3124_rollercoasters.csv?token=ADKNEZQBUPLKRJEG2OF6LDK7GR7EG')
+coaster <- coaster[,-1]
+coaster.mat <- data.frame(matrix(unlist(coaster), ncol=20))
 
-coaster.mat <- data.frame(matrix(unlist(coaster), ncol=21))
-
-double_cols <- c(1,4:5, 7, 9, 11:21)
+double_cols <- c(1,4, 6, 8, 10:20)
 coaster.mat[,double_cols] <- sapply(coaster.mat[, double_cols], as.numeric)
 colnames(coaster.mat) <- colnames(coaster)
 
@@ -56,8 +56,28 @@ ui <- fluidPage(theme=shinytheme("readable"),
                      DT::dataTableOutput("mytable"), width=12)),
                fluidRow(column(6,plotOutput("plot")),
                         column(6, fluidRow(tableOutput("info11"),
+                               verbatimTextOutput("info13"),
                                verbatimTextOutput("info12"))))
-               )
+               ),
+      tabPanel("Data Dictionary",
+               HTML("<div style='font-size:18px'>
+                    <ul><li><b>park_id</b>: Unique park identifier, zero-indexed.</li>
+                    <li><b>theme</b>: Title of the park scenario.</li>
+                    <li><b>rollercoaster_type</b>: Category of roller coaster.</li>
+                    <li><b>excitement</b>: Ride excitement from 0 (very low) with no specified maximum, but it is very rarely above 10.0. Larger numbers are always better.</li>
+                    <li><b>intensity</b>: Ride intensity from 0 (very dull) with no specified maximum, though most (well-designed) rides are under 10.0. Each customer has their own intensity preference.</li>
+                    <li><b>nausea</b>: Ride nausea from 0 (very low) with no specified maximum, but lower is better and rides rarely have values above 10.0.</li>
+                    <li><b>excitement_rating, intensity_rating, nausea_rating</b>: Descriptors of the excitement, intensity, and nausea ratings.</li>
+                    <li><b>max_speed</b>: Maximum speed (mph) the ride reaches.</li>
+                    <li><b>avg_speed</b>: Average speed (mph) of the ride.</li>
+                    <li><b>ride_time</b>: Total duration of the ride in seconds.</li>
+                    <li><b>ride_length</b>: Length of the ride in feet.</li>
+                    <li><b>max_pos_gs, max_neg_gs, max_lateral_gs</b>: Values describing the maximum observed positive, negative, and lateral G-Forces.</li>
+                    <li><b>total_air_time</b>: Number of seconds in which riders experience weightlessness.</li>
+                    <li><b>drops</b>: Number of downhill segments.</li>
+                    <li><b>highest_drop_height</b>: Highest height (with 0 being sea-level) from which a drop takes place. Note: rides can drop to -6 feet.</li>
+                    <li><b>inversions</b>: Number of times riders are upside-down during the ride. This accounts for loops, corkscrews, etc.</li>
+                    </ul></div>"))
       )
       
 )
@@ -85,7 +105,7 @@ server <- function(input, output) {
       # identify variables to be plotted
       if(!(is.null(input$mytable_columns_selected))){
       x1 <- input$mytable_columns_selected
-      scatter_fun(coaster, colnames(coaster)[x1[1]], colnames(coaster)[x1[2]])
+      scatter_fun(coaster, colnames(coaster)[x1[2]], colnames(coaster)[x1[1]])
       }else{NULL}
    })
    
@@ -127,10 +147,36 @@ server <- function(input, output) {
          # get the names of the selected columns
          names_x1 <- colnames(coaster.mat)[x1]
          len <- length(x1)
+         correlation <- cor(coaster.mat[,x1[1]], coaster.mat[,x1[2]])
+         #paste("The correlation of ",names_x1[1], " and ", names_x1[2], " is ", correlation,".\n")
          # make a regression formula and regress
          fmla <- as.formula(paste(paste(names_x1[1])," ~ ", paste(names_x1[2:len], collapse= "+")))
-         r <- summary(lm( fmla, data=coaster.mat[,x1] ))$r.squared
-         paste("The r-squared is:", r)
+         
+         if(len > 2){
+            r <- summary(lm( fmla, data=coaster.mat[,x1] ))$adj.r.squared
+            paste("The correlation of ",names_x1[1], " and ", names_x1[2], " is ", correlation,".")
+            paste("The adjusted r-squared is:", r)
+            
+         }else{
+            r <- summary(lm( fmla, data=coaster.mat[,x1] ))$r.squared
+            paste("The correlation of ",names_x1[1], " and ", names_x1[2], " is ", correlation,".")
+            paste("The r-squared is:", r)
+         }
+         
+      }else{NULL}
+   })
+   
+   output$info13 <- renderPrint({
+      if(!(is.null(input$mytable_columns_selected))){
+         # get the indices of the selected columns
+         x1 <- input$mytable_columns_selected
+         # get the names of the selected columns
+         names_x1 <- colnames(coaster.mat)[x1]
+         len <- length(x1)
+         correlation <- cor(coaster.mat[,x1[1]], coaster.mat[,x1[2]])
+         
+         paste("The correlation of",names_x1[1], "and", names_x1[2], "is", correlation)
+         
       }else{NULL}
    })
    
